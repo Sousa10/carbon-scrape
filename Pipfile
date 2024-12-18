@@ -1,0 +1,16 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+apify-client = "*"
+pandas = "*"
+openpyxl = "*"
+pyinstaller = "==6.10"
+requests = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.11"

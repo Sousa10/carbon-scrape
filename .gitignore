@@ -1,0 +1,43 @@
+# Python compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Build artifacts
+build/
+dist/
+*.spec
+
+# Executable files
+*.exe
+
+# Pipenv files
+Pipfile.lock
+
+# Configuration files
+config.ini
+
+# Excel files
+*.xlsx
+
+# Logs and local environment
+*.log
+.env
+.env.local
+
+# Ignore virtual environments
+venv/
+.venv/
+ENV/
+env/
+
+# Ignore temporary files and cache
+*.tmp
+*.temp
+*.bak
+*.swp
+.DS_Store
+
+# Ignore results or outputs
+results/

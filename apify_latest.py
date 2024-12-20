@@ -30,8 +30,46 @@ def readProjectListFile(path, sheetName='Results', colName='Name', extraCols=[])
     
     return projects
 
+def get_blocked_domains():
+    """
+    Prompt the user to enter blocked domains in a larger input area.
+    Returns a list of blocked domains.
+    """
+    from tkinter import Tk, Toplevel, Text, Button, Label
 
-def runQuery(client, project_name, q, progress_bar, progress_step, log_text_widget):
+    root = Tk()
+    root.withdraw()  # Hide the root window
+
+    # Create a new top-level window
+    dialog = Toplevel()
+    dialog.title("Blocked Domains")
+    dialog.geometry("400x250")  # Set the size for a larger input area
+
+    Label(dialog, text="Enter the domains to block (comma-separated):").pack(pady=5)
+
+    # Multi-line text area for input
+    text_area = Text(dialog, wrap="word", height=8, width=50)
+    text_area.pack(padx=10, pady=5)
+
+    blocked_domains = []
+
+    def on_submit():
+        # Get the content of the text area and split into domains
+        input_text = text_area.get("1.0", "end").strip()
+        blocked_domains.extend(input_text.split(","))
+        dialog.destroy()
+        root.destroy()  # Clean up the root window
+
+    # Add a submit button
+    Button(dialog, text="Submit", command=on_submit).pack(pady=10)
+
+    dialog.grab_set()  # Ensure focus on the dialog
+    dialog.wait_window()
+
+    return [domain.strip() for domain in blocked_domains if domain.strip()]
+
+
+def runQuery(client, project_name, q, progress_bar, progress_step, log_text_widget, blocked_domains):
     results = []
     outputs = []
 
@@ -74,6 +112,11 @@ def runQuery(client, project_name, q, progress_bar, progress_step, log_text_widg
             if is_file_download(url):
                 update_log_window(log_text_widget, f"Skipped download link: {url}")
                 continue
+
+            # Check if URL belongs to a blocked domain
+            if any(blocked_domain in url for blocked_domain in blocked_domains):
+                update_log_window(log_text_widget, f"Skipped blocked domain: {url}")
+                continue  # Skip this result
             
             if title.strip() and url.strip():  # Ensure both title and URL are not empty
                 outputs.append([project_name, makeHyperlink(title, url), url])
@@ -117,7 +160,7 @@ def makeHyperlink(text, url):
     # Return the hyperlink as a valid string
     return f'=HYPERLINK("{url}", "{text}")'
 
-def main(file_path, progress_bar, log_window):
+def main(file_path, progress_bar, log_window, blocked_domains):
     config = getConfig()
     client = ApifyClient(config['Main']['api key'])
     outputs = []
@@ -133,6 +176,10 @@ def main(file_path, progress_bar, log_window):
     except ValueError as e:
         update_log_window(log_window, str(e))
         return
+    
+    # Get blocked domains from the user
+    # blocked_domains = get_blocked_domains()
+    # update_log_window(log_window, f"Blocked domains: {', '.join(blocked_domains) or 'None'}")
 
     # Calculate progress step based on the total number of projects
     total_projects = len(projects)
@@ -145,7 +192,7 @@ def main(file_path, progress_bar, log_window):
      # Loop through each refined query and run the search
     for project_name, query in projects:
         update_log_window(log_window, f"Processing project: {project_name}")
-        outputs.extend(runQuery(client, project_name, query, progress_bar, progress_step, log_window))
+        outputs.extend(runQuery(client, project_name, query, progress_bar, progress_step, log_window, blocked_domains))
 
     # Ask the user where to save the output file
     save_path = filedialog.asksaveasfilename(
@@ -181,8 +228,12 @@ def browse_file(progress_bar, log_text_widget):
         progress_bar['value'] = 0  # Reset progress bar
         update_log_window(log_text_widget, f"Selected file: {file_path}")
 
+        # Get blocked domains outside the thread
+        blocked_domains = get_blocked_domains()
+        update_log_window(log_text_widget, f"Blocked domains: {', '.join(blocked_domains) or 'None'}")
+
         # Run the main function in a separate thread to keep the UI responsive
-        threading.Thread(target=main, args=(file_path, progress_bar, log_text_widget)).start()
+        threading.Thread(target=main, args=(file_path, progress_bar, log_text_widget, blocked_domains)).start()
     else:
         update_log_window(log_text_widget, "No file selected.")
 
